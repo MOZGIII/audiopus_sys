@@ -276,13 +276,13 @@ fn is_target_env(env: &str) -> bool {
 }
 
 fn is_cross_compiled() -> bool {
-    let host_arch = env::var("CARGO_CFG_HOST_ARCH")
-        .expect("Could not read host architecture environment variable.");
+    let host_arch = env::var("HOST")
+        .expect("Could not read host environment variable.");
 
     println!("cargo:info=Host architecture: {:?}.", host_arch);
 
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH")
-        .expect("Could not read target architecture environment variable.");
+    let target_arch = env::var("TARGET")
+        .expect("Could not read target environment variable.");
 
     println!("cargo:info=Target architecture: {:?}.", target_arch);
 
