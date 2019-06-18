@@ -97,8 +97,8 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
         println!("cargo:info=Opus will be built for 32-bit.");
 
         command_builder
-            .env("LDFLAGS", "-m32")
-            .env("CFLAGS", "-m32");
+            .env("LDFLAGS", "-g -O2 -m32")
+            .env("CFLAGS", "-g -O2 -m32");
     } else {
         println!("cargo:info=Opus will be built for 64-bit.");
     }
