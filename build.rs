@@ -1,8 +1,8 @@
 #![deny(rust_2018_idioms)]
 
-use std::{env, path::Path};
 #[cfg(all(windows, target_env = "msvc"))]
 use std::path::PathBuf;
+use std::{env, path::Path};
 
 #[cfg(any(unix, target_env = "gnu"))]
 use std::process::Command;
@@ -26,11 +26,7 @@ fn rustc_linking_word(is_static_link: bool) -> &'static str {
 /// 3. Building Opus.
 /// 4. Installing the built Opus in `OUT_DIR`.
 #[cfg(any(unix, target_env = "gnu"))]
-fn build_opus(
-    build_directory: &Path,
-    is_static: bool,
-    installed_lib_directory: &Option<String>,
-) {
+fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: &Option<String>) {
     let is_static_text = rustc_linking_word(is_static);
 
     if let Some(prebuilt_directory) = installed_lib_directory {
@@ -61,9 +57,12 @@ fn build_opus(
         .arg(&opus_path)
         .arg(&build_directory)
         .status()
-        .expect(&format!("Failed to copy Opus files to: {}", &build_directory
-            .to_str()
-            .expect("Build Path contains invalid characters.")));
+        .expect(&format!(
+            "Failed to copy Opus files to: {}",
+            &build_directory
+                .to_str()
+                .expect("Build Path contains invalid characters.")
+        ));
 
     if !copy_command_result.success() {
         panic!("Failed to copy Opus files.");
@@ -92,6 +91,16 @@ fn build_opus(
         command_builder
             .arg("--disable-static")
             .arg("--enable-shared");
+    }
+
+    if is_target_x32() {
+        println!("cargo:info=Opus will be built for 32-bit.");
+
+        command_builder
+            .env("LDFLAGS", "-m32")
+            .env("CFLAGS", "-m32");
+    } else {
+        println!("cargo:info=Opus will be built for 64-bit.");
     }
 
     let command_result = command_builder
@@ -140,11 +149,7 @@ fn build_opus(
 }
 
 #[cfg(all(windows, target_env = "msvc"))]
-fn build_opus(
-    _build_directory: &Path,
-    is_static: bool,
-    installed_lib_directory: &Option<String>,
-) {
+fn build_opus(_build_directory: &Path, is_static: bool, installed_lib_directory: &Option<String>) {
     link_prebuilt_opus(is_static, installed_lib_directory);
 }
 
@@ -240,6 +245,30 @@ fn find_via_pkg_config(is_static: bool) -> bool {
         .is_ok()
 }
 
+fn is_target_x32() -> bool {
+    env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
+        .map(|var| var == "32")
+        .unwrap_or(false)
+}
+
+fn is_target_os(os: &str) -> bool {
+    env::var("CARGO_CFG_TARGET_OS")
+        .map(|var| var == os)
+        .unwrap_or(false)
+}
+
+fn is_target_family(family: &str) -> bool {
+    env::var("CARGO_CFG_TARGET_FAMILY")
+        .map(|var| var == family)
+        .unwrap_or(false)
+}
+
+fn is_target_env(env: &str) -> bool {
+    env::var("CARGO_CFG_TARGET_ENV")
+        .map(|var| var == env)
+        .unwrap_or(false)
+}
+
 /// Based on the OS or target environment we are building for,
 /// this function will return an expected default library linking method.
 ///
@@ -251,13 +280,12 @@ fn find_via_pkg_config(is_static: bool) -> bool {
 /// if the `static`-feature is enabled, the environment variable
 /// `LIBOPUS_STATIC` or `OPUS_STATIC` is set.
 fn default_library_linking() -> bool {
-    #[cfg(any(windows, target_os = "macos", target_env = "musl"))]
-    {
+    if is_target_family("windows") || is_target_os("macos") || is_target_env("musl") {
         true
-    }
-    #[cfg(all(unix, target_env = "gnu"))]
-    {
+    } else if is_target_family("unix") && is_target_env("gnu") {
         false
+    } else {
+        panic!("Unsupported target operating system.");
     }
 }
 
