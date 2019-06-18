@@ -94,6 +94,7 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
     }
 
     if is_cross_compiled() {
+        println!("cargo:info=Opus will be built for cross-compilation.");
         command_builder
             .arg("--host");
     }
