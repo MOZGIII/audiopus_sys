@@ -93,6 +93,11 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
             .arg("--enable-shared");
     }
 
+    if is_cross_compiled() {
+        command_builder
+            .arg("--host");
+    }
+
     if is_target_x32() {
         println!("cargo:info=Opus will be built for 32-bit.");
 
@@ -267,6 +272,16 @@ fn is_target_env(env: &str) -> bool {
     env::var("CARGO_CFG_TARGET_ENV")
         .map(|var| var == env)
         .unwrap_or(false)
+}
+
+fn is_cross_compiled() -> bool {
+    let host_arch = env::var("CARGO_CFG_HOST_ARCH")
+        .expect("Could not read host architecture environment variable.");
+
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH")
+        .expect("Could not read target architecture environment variable.");
+
+    host_arch != target_arch
 }
 
 /// Based on the OS or target environment we are building for,
