@@ -360,7 +360,7 @@ fn main() {
     }
 
     let build_variable =
-        std::env::var("OUT_DIR").expect("Environment variable `OUT_DIR` is missing.");
+        env::var("OUT_DIR").expect("Environment variable `OUT_DIR` is missing.");
 
     let build_path = Path::new(&build_variable);
 
