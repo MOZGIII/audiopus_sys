@@ -97,7 +97,7 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
         println!("cargo:info=Opus will be cross-compiled.");
         command_builder.arg(format!(
             "--host={}",
-            env::var("CARGO_CFG_TARGET_FAMILY")
+            env::var("CARGO_CFG_TARGET_ARCH")
                 .expect("Could not find target family environment variable.")
         ));
     }
