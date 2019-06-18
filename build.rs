@@ -94,9 +94,12 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
     }
 
     if is_cross_compiled() {
-        println!("cargo:info=Opus will be built for cross-compilation.");
-        command_builder
-            .arg("--host");
+        println!("cargo:info=Opus will be cross-compiled.");
+        command_builder.arg(format!(
+            "--host={}",
+            std::env("CARGO_CFG_TARGET_FAMILY")
+                .expect("Could not find target family environment variable.")
+        ));
     }
 
     if is_target_x32() {
@@ -276,13 +279,11 @@ fn is_target_env(env: &str) -> bool {
 }
 
 fn is_cross_compiled() -> bool {
-    let host_arch = env::var("HOST")
-        .expect("Could not read host environment variable.");
+    let host_arch = env::var("HOST").expect("Could not read host environment variable.");
 
     println!("cargo:info=Host architecture: {:?}.", host_arch);
 
-    let target_arch = env::var("TARGET")
-        .expect("Could not read target environment variable.");
+    let target_arch = env::var("TARGET").expect("Could not read target environment variable.");
 
     println!("cargo:info=Target architecture: {:?}.", target_arch);
 
