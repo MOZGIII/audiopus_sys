@@ -94,22 +94,14 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
     }
 
     if is_cross_compiled() {
-        println!("cargo:info=Opus will be cross-compiled.");
-        command_builder.arg(format!(
-            "--host={}",
-            env::var("CARGO_CFG_TARGET_ARCH")
-                .expect("Could not find target family environment variable.")
-        ));
-    }
+        let target = env::var("CARGO_CFG_TARGET_ARCH")
+            .expect("Could not find target family environment variable.");
 
-    if is_target_x32() {
-        println!("cargo:info=Opus will be built for 32-bit.");
+        remove_vendor(&mut target);
 
-        command_builder
-            .env("LDFLAGS", "-g -O2 -m32")
-            .env("CFLAGS", "-g -O2 -m32");
-    } else {
-        println!("cargo:info=Opus will be built for 64-bit.");
+        println!("cargo:info=Opus will be cross-compiled for: {:?}.", &target);
+
+        command_builder.arg(format!("--host={}", &target));
     }
 
     let command_result = command_builder
@@ -125,7 +117,7 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
         )
         .current_dir(&opus_path)
         .status()
-        .expect("Failed to run `configure` Opus.");
+        .expect("Failed to run `configure`.");
 
     if !command_result.success() {
         panic!("Failed to configure Opus.");
@@ -155,6 +147,19 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
         "cargo:rustc-link-search=native={}/lib",
         build_directory.display()
     );
+}
+
+/// This function intends to remove the vendor, the second part of an
+/// architecture quadruplet, and turning it into a triplet.
+///
+/// Turning `arm-unknown-linux-gnueabihf` into `arm-linux-gnueabihf`.
+#[cfg(any(unix, target_env = "gnu"))]
+fn remove_vendor(triplet: &mut String) {
+    if let Some(index_vendor_start) = triplet.find('-') {
+        if let Some(index_vendor_end) = triplet[index_vendor_start + 1..].find('-') {
+            triplet.replace_range(index_vendor_start..index_vendor_end, "");
+        }
+    }
 }
 
 #[cfg(all(windows, target_env = "msvc"))]
@@ -254,12 +259,6 @@ fn find_via_pkg_config(is_static: bool) -> bool {
         .is_ok()
 }
 
-fn is_target_x32() -> bool {
-    env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
-        .map(|var| var == "32")
-        .unwrap_or(false)
-}
-
 fn is_target_os(os: &str) -> bool {
     env::var("CARGO_CFG_TARGET_OS")
         .map(|var| var == os)
@@ -278,6 +277,7 @@ fn is_target_env(env: &str) -> bool {
         .unwrap_or(false)
 }
 
+#[cfg(any(unix, target_env = "gnu"))]
 fn is_cross_compiled() -> bool {
     let host_arch = env::var("HOST").expect("Could not read host environment variable.");
 
@@ -359,10 +359,20 @@ fn main() {
         }
     }
 
-    let build_variable =
-        env::var("OUT_DIR").expect("Environment variable `OUT_DIR` is missing.");
+    let build_variable = env::var("OUT_DIR").expect("Environment variable `OUT_DIR` is missing.");
 
     let build_path = Path::new(&build_variable);
 
     build_opus(&build_path, is_static, &installed_lib_directory);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn remove_unknown_vendor() {
+        let mut triplet = "arm-unknown-linux-gnueabihf";
+        remove_vendor(&mut triplet);
+
+        assert_eq!(triplet, "arm-linux-gnueabihf");
+    }
 }
