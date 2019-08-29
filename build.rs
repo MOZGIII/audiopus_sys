@@ -94,7 +94,7 @@ fn build_opus(build_directory: &Path, is_static: bool, installed_lib_directory: 
     }
 
     if is_cross_compiled() {
-        let target = env::var("CARGO_CFG_TARGET_ARCH")
+        let mut target = env::var("CARGO_CFG_TARGET_ARCH")
             .expect("Could not find target family environment variable.");
 
         remove_vendor(&mut target);
